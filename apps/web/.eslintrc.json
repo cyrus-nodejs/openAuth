@@ -1,0 +1,64 @@
+{
+	"extends": ["next/core-web-vitals", "next/typescript", "eslint:recommended", "plugin:react/recommended"],
+	"plugins": ["boundaries"],
+	"settings": {
+		"react": {
+			"version": "detect"
+		},
+		"boundaries/include": ["src/**/*"],
+		"boundaries/elements": [
+			{
+				"mode": "full",
+				"type": "shared",
+				"pattern": ["src/assets/**/*", "src/components/**/*", "src/context/**/*", "src/features/**/*", "src/hooks/**/*", "src/lib/**/*"]
+			},
+			{
+				"mode": "full",
+				"type": "feature",
+				"capture": ["featureName"],
+				"pattern": ["src/features/*/**/*"]
+			},
+			{
+				"mode": "full",
+				"type": "app",
+				"capture": ["_", "fileName"],
+				"pattern": ["src/app/**/*"]
+			},
+			{
+				"mode": "full",
+				"type": "neverImport",
+				"pattern": ["src/*", "src/tasks/**/*"]
+			}
+		]
+	},
+	"rules": {
+		"boundaries/no-unknown": ["error"],
+		"boundaries/no-unknown-files": ["error"],
+		"boundaries/element-types": [
+			"error",
+			{
+				"default": "disallow",
+				"rules": [
+					{
+						"from": ["shared"],
+						"allow": ["shared"]
+					},
+					{
+						"from": ["feature"],
+						"allow": ["shared", ["feature", { "featureName": "${from.featureName}" }]]
+					},
+					{
+						"from": ["app", "neverImport"],
+						"allow": ["shared", "feature"]
+					},
+					{
+						"from": ["app"],
+						"allow": [["app", { "fileName": "*.css" }]]
+					}
+				]
+			}
+		],
+		"no-console": ["error", { "allow": ["warn", "error"] }],
+		"react/react-in-jsx-scope": "off"
+	}
+}

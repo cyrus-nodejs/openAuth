@@ -1,0 +1,85 @@
+name: CI / Container Verification
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  validate-and-test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Install PNPM
+        uses: pnpm/action-setup@v4
+        
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Get PNPM Store Directory
+        id: pnpm-cache
+        shell: bash
+        run: |
+          echo "STORE_PATH=$(pnpm store path)" >> "$GITHUB_OUTPUT"
+
+      - name: Setup PNPM Cache
+        uses: actions/cache@v4
+        with:
+          path: ${{ steps.pnpm-cache.outputs.STORE_PATH }}
+          key: ${{ runner.os }}-pnpm-store-${{ hashFiles('**/pnpm-lock.yaml') }}
+          restore-keys: |
+            ${{ runner.os }}-pnpm-store-
+
+      - name: Install Dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Lint Codebase
+        run: pnpm lint
+
+      - name: Run Tests
+        run: pnpm test --if-present
+
+      - name: Build and Start Containers
+        run: docker compose up --build -d
+
+      - name: Verify API Service Health
+        run: |
+          echo "Waiting for API..."
+          for i in {1..20}; do
+            if curl -f http://localhost:4000/health; then
+              exit 0
+            fi
+            sleep 5
+          done
+          exit 1
+
+      - name: Verify Web Frontend
+        run: |
+          echo "Waiting for Web..."
+          for i in {1..20}; do
+            if curl -f http://localhost:3000; then
+              exit 0
+            fi
+            sleep 5
+          done
+          exit 1
+
+      
+
+      - name: Show Container Logs
+        if: failure()
+        run: docker compose logs
+
+      - name: Teardown Containers
+        if: always()
+        run: docker compose down -v
+
+      
